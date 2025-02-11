@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Markdown Editor with Line Rendering</title>
+    <title>Markdown Editor with Obsidian-Style Live Rendering</title>
     <style>
+        /* General Styling */
         body {
             font-family: Arial, sans-serif;
-            background-color: #121212;
+            background-color: #000000;
             color: #ffffff;
             display: flex;
             flex-direction: column;
@@ -18,6 +19,7 @@
         }
         h1 {
             text-align: center;
+            color: #ffffff;
         }
         #toggle-button {
             position: absolute;
@@ -33,12 +35,14 @@
         #toggle-button:hover {
             background-color: #666;
         }
+
+        /* Editor */
         .editor-container {
             width: 90%;
             max-width: 800px;
-            border: 1px solid #444;
-            padding: 10px;
-            background: #1e1e1e;
+            border: 1px solid #333;
+            padding: 15px;
+            background: #111;
             border-radius: 5px;
             overflow-y: auto;
         }
@@ -50,13 +54,52 @@
         .rendered {
             background-color: transparent;
         }
+
+        /* Markdown Styling */
+        strong, b {
+            color: #ffffff;
+            font-weight: bold;
+        }
+        em, i {
+            color: #bbbbbb;
+            font-style: italic;
+        }
+        pre, code {
+            background: #222;
+            padding: 4px 8px;
+            border-radius: 5px;
+            font-family: monospace;
+            color: #ffcc00;
+        }
+        pre {
+            display: block;
+            padding: 10px;
+            overflow-x: auto;
+        }
+        a {
+            color: #9b5cff;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .hashtag {
+            background-color: #222;
+            color: #9b5cff;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        ul {
+            padding-left: 20px;
+        }
     </style>
 </head>
 <body>
 
     <button id="toggle-button">Switch to Preview</button>
-    
-    <h1>Markdown Editor with Line Rendering</h1>
+
+    <h1>Markdown Editor with Live Rendering</h1>
     <p>Type Markdown, move to a new line, and see real-time formatting.</p>
 
     <div class="editor-container" id="editable" contenteditable="true"></div>
@@ -70,7 +113,7 @@
 
         const turndownService = new TurndownService();
 
-        // Ensure bold, italics, and code block formatting is preserved
+        // Fix for bold, italics, and inline code
         turndownService.addRule('italics', {
             filter: ['em', 'i'],
             replacement: function(content) {
@@ -82,6 +125,28 @@
             filter: ['strong', 'b'],
             replacement: function(content) {
                 return `**${content}**`;
+            }
+        });
+
+        turndownService.addRule('inlineCode', {
+            filter: ['code'],
+            replacement: function(content) {
+                return `\`${content}\``;
+            }
+        });
+
+        turndownService.addRule('codeBlocks', {
+            filter: 'pre',
+            replacement: function(content, node) {
+                return `\`\`\`\n${node.textContent}\n\`\`\``;
+            }
+        });
+
+        // Hashtag Formatting
+        turndownService.addRule('hashtags', {
+            filter: node => node.classList.contains('hashtag'),
+            replacement: function(content) {
+                return `#${content}`;
             }
         });
 
