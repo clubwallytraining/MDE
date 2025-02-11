@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Markdown Editor with Paste Support</title>
+    <title>Markdown Editor with Line-by-Line Rendering</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -37,7 +37,7 @@
         #toggle-button:hover {
             background-color: #666;
         }
-        textarea {
+        #editor {
             width: 100%;
             height: 400px;
             padding: 10px;
@@ -58,31 +58,24 @@
             overflow-y: auto;
             display: none;
         }
-        pre {
-            background: #333;
-            padding: 10px;
-            border-radius: 5px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            border: 1px solid #666;
-        }
-        table th, table td {
-            border: 1px solid #666;
+        .line {
             padding: 5px;
-            text-align: left;
+            min-height: 20px;
+            cursor: text;
+        }
+        .rendered {
+            background-color: transparent;
         }
     </style>
 </head>
 <body>
 
-    <h1>Markdown Editor with Paste Support</h1>
-    <p>Paste formatted content (from websites, Google Docs, etc.), and it will automatically be converted to Markdown.</p>
+    <h1>Markdown Editor with Line-by-Line Rendering</h1>
+    <p>Type Markdown and move to a new line to see real-time formatting.</p>
 
     <div class="editor-container">
         <button id="toggle-button">Switch to Preview</button>
-        <textarea id="editor" placeholder="Type here..."></textarea>
+        <div id="editable" contenteditable="true" class="editor"></div>
         <div class="preview" id="preview"></div>
     </div>
 
@@ -90,13 +83,12 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/turndown/7.1.2/turndown.min.js"></script>
 
     <script>
-        const editor = document.getElementById("editor");
+        const editor = document.getElementById("editable");
         const preview = document.getElementById("preview");
         const toggleButton = document.getElementById("toggle-button");
-
+        
         const turndownService = new TurndownService();
 
-        // Fix for italic support
         turndownService.addRule('italics', {
             filter: ['em', 'i'],
             replacement: function(content) {
@@ -111,29 +103,43 @@
             }
         });
 
-        turndownService.addRule('images', {
-            filter: 'img',
-            replacement: function(content, node) {
-                let src = node.getAttribute('src');
-                let alt = node.getAttribute('alt') || "Image";
-                return `![${alt}](${src})`;
-            }
-        });
-
-        turndownService.addRule('tables', {
-            filter: 'table',
-            replacement: function(content, node) {
-                let rows = Array.from(node.rows).map(row => {
-                    return '| ' + Array.from(row.cells).map(cell => cell.textContent.trim()).join(' | ') + ' |';
-                }).join('\n');
-
-                let headerSeparator = '| ' + '- | '.repeat(node.rows[0].cells.length);
-                return rows.split('\n')[0] + '\n' + headerSeparator + '\n' + rows.split('\n').slice(1).join('\n');
-            }
-        });
-
         function updatePreview() {
-            preview.innerHTML = marked.parse(editor.value);
+            preview.innerHTML = marked.parse(editor.innerHTML);
+        }
+
+        function handleLineByLineRendering(event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+
+                let selection = window.getSelection();
+                let range = selection.getRangeAt(0);
+                let currentNode = range.startContainer.parentElement;
+                
+                if (!currentNode.classList.contains("line")) return;
+
+                // Convert previous line to Markdown
+                let markdownText = turndownService.turndown(currentNode.innerHTML);
+                currentNode.innerHTML = marked.parse(markdownText);
+                currentNode.classList.add("rendered");
+
+                // Create new editable line
+                let newLine = document.createElement("div");
+                newLine.classList.add("line");
+                newLine.contentEditable = "true";
+                newLine.innerHTML = "<br>"; // Ensures new line behavior
+
+                editor.appendChild(newLine);
+                placeCursorAtEnd(newLine);
+            }
+        }
+
+        function placeCursorAtEnd(element) {
+            let range = document.createRange();
+            let selection = window.getSelection();
+            range.setStart(element, 0);
+            range.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(range);
         }
 
         document.addEventListener("paste", function(event) {
@@ -142,28 +148,23 @@
             let htmlData = clipboardData.getData("text/html");
             let plainText = clipboardData.getData("text/plain");
 
-            if (htmlData) {
-                let markdown = turndownService.turndown(htmlData);
-                insertAtCursor(markdown);
-            } else {
-                insertAtCursor(plainText);
-            }
+            let markdown = htmlData ? turndownService.turndown(htmlData) : plainText;
+            insertAtCursor(markdown);
         });
 
         function insertAtCursor(text) {
-            let startPos = editor.selectionStart;
-            let endPos = editor.selectionEnd;
-
-            let before = editor.value.substring(0, startPos);
-            let after = editor.value.substring(endPos);
-
-            editor.value = before + text + after;
-            editor.selectionStart = editor.selectionEnd = startPos + text.length;
-
-            updatePreview();
+            let selection = window.getSelection();
+            let range = selection.getRangeAt(0);
+            let textNode = document.createTextNode(text);
+            range.deleteContents();
+            range.insertNode(textNode);
+            range.setStartAfter(textNode);
+            range.setEndAfter(textNode);
+            selection.removeAllRanges();
+            selection.addRange(range);
         }
 
-        // Toggle between Edit and Preview mode
+        // Toggle Edit/Preview Mode
         toggleButton.addEventListener("click", function() {
             if (editor.style.display === "none") {
                 editor.style.display = "block";
@@ -177,8 +178,14 @@
             }
         });
 
-        // Initialize preview
-        updatePreview();
+        // Initialize first editable line
+        let firstLine = document.createElement("div");
+        firstLine.classList.add("line");
+        firstLine.contentEditable = "true";
+        editor.appendChild(firstLine);
+        placeCursorAtEnd(firstLine);
+
+        editor.addEventListener("keydown", handleLineByLineRendering);
     </script>
 
 </body>
