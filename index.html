@@ -38,36 +38,37 @@
         .editor-container {
             width: 90%;
             max-width: 800px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .cell {
             border: 1px solid #333;
-            padding: 15px;
             background: #111;
             border-radius: 5px;
-            overflow-y: auto;
-        }
-        .line {
-            padding: 5px;
-            min-height: 20px;
+            padding: 15px;
+            min-height: 50px;
             cursor: text;
             outline: none;
-            border-bottom: 1px solid #333;
+            font-size: 16px;
         }
         .rendered {
             background-color: transparent;
+            cursor: pointer;
         }
         .add-button {
             display: flex;
             justify-content: center;
             align-items: center;
-            width: 30px;
-            height: 30px;
+            width: 40px;
+            height: 40px;
             background: #444;
             color: white;
             font-size: 20px;
             cursor: pointer;
             border-radius: 50%;
-            margin: 10px auto;
+            margin: 5px auto;
             text-align: center;
-            line-height: 30px;
         }
         .add-button:hover {
             background: #666;
@@ -131,53 +132,46 @@
         const turndownService = new TurndownService();
 
         function handleBlur(event) {
-            let currentNode = event.target;
-            if (!currentNode.classList.contains("line") || currentNode.classList.contains("rendered")) {
-                return;
-            }
-            let markdownText = turndownService.turndown(currentNode.innerHTML);
-            currentNode.innerHTML = marked.parse(markdownText);
-            currentNode.classList.add("rendered");
+            let cell = event.target;
+            if (!cell.classList.contains("cell") || cell.classList.contains("rendered")) return;
+            
+            let markdownText = turndownService.turndown(cell.innerHTML);
+            cell.innerHTML = marked.parse(markdownText);
+            cell.classList.add("rendered");
+            cell.contentEditable = "false";
         }
 
         function handleClickToEdit(event) {
-            let currentNode = event.target;
-            if (currentNode.classList.contains("rendered")) {
-                currentNode.classList.remove("rendered");
-                let markdownText = turndownService.turndown(currentNode.innerHTML);
-                currentNode.innerText = markdownText;
-                currentNode.contentEditable = "true";
-                currentNode.focus();
+            let cell = event.target;
+            if (cell.classList.contains("rendered")) {
+                cell.classList.remove("rendered");
+                let markdownText = turndownService.turndown(cell.innerHTML);
+                cell.innerText = markdownText;
+                cell.contentEditable = "true";
+                cell.focus();
             }
         }
 
         function handleEnter(event) {
             if (event.key === "Enter") {
                 event.preventDefault();
+                let currentCell = event.target;
+                handleBlur({ target: currentCell });
 
-                let selection = window.getSelection();
-                let range = selection.getRangeAt(0);
-                let currentNode = range.startContainer.parentElement;
-
-                if (!currentNode.classList.contains("line")) return;
-
-                handleBlur({ target: currentNode });
-
-                let newLine = createEditableDiv();
-                editor.appendChild(newLine);
-                editor.appendChild(createAddButton());
-                placeCursorAtEnd(newLine);
+                let newCell = createNewCell();
+                editor.appendChild(newCell);
+                placeCursorAtEnd(newCell);
             }
         }
 
-        function createEditableDiv() {
-            let newLine = document.createElement("div");
-            newLine.classList.add("line");
-            newLine.contentEditable = "true";
-            newLine.innerHTML = "";
-            newLine.addEventListener("blur", handleBlur);
-            newLine.addEventListener("click", handleClickToEdit);
-            return newLine;
+        function createNewCell() {
+            let cell = document.createElement("div");
+            cell.classList.add("cell");
+            cell.contentEditable = "true";
+            cell.addEventListener("blur", handleBlur);
+            cell.addEventListener("click", handleClickToEdit);
+            cell.addEventListener("keydown", handleEnter);
+            return cell;
         }
 
         function createAddButton() {
@@ -185,10 +179,10 @@
             addButton.classList.add("add-button");
             addButton.innerText = "+";
             addButton.addEventListener("click", function () {
-                let newLine = createEditableDiv();
-                editor.appendChild(newLine);
+                let newCell = createNewCell();
+                editor.appendChild(newCell);
                 editor.appendChild(createAddButton());
-                placeCursorAtEnd(newLine);
+                placeCursorAtEnd(newCell);
             });
             return addButton;
         }
@@ -210,28 +204,34 @@
             let plainText = clipboardData.getData("text/plain");
 
             let markdown = markdownData || (htmlData ? turndownService.turndown(htmlData) : plainText);
-            let newLine = createEditableDiv();
-            newLine.innerText = markdown;
-            editor.appendChild(newLine);
+            let newCell = createNewCell();
+            newCell.innerText = markdown;
+            editor.appendChild(newCell);
             editor.appendChild(createAddButton());
-            placeCursorAtEnd(newLine);
+            placeCursorAtEnd(newCell);
         });
 
         toggleButton.addEventListener("click", function() {
             if (editor.contentEditable === "true") {
                 editor.contentEditable = "false";
                 toggleButton.textContent = "Switch to Edit";
-                editor.innerHTML = marked.parse(editor.innerHTML);
+                let cells = document.querySelectorAll(".cell");
+                cells.forEach(cell => {
+                    let markdownText = turndownService.turndown(cell.innerHTML);
+                    cell.innerHTML = marked.parse(markdownText);
+                    cell.classList.add("rendered");
+                    cell.contentEditable = "false";
+                });
             } else {
                 editor.contentEditable = "true";
                 toggleButton.textContent = "Switch to Preview";
             }
         });
 
-        let firstLine = createEditableDiv();
-        editor.appendChild(firstLine);
+        let firstCell = createNewCell();
+        editor.appendChild(firstCell);
         editor.appendChild(createAddButton());
-        placeCursorAtEnd(firstLine);
+        placeCursorAtEnd(firstCell);
 
         editor.addEventListener("keydown", handleEnter);
     </script>
