@@ -70,6 +70,7 @@
 
         const turndownService = new TurndownService();
 
+        // Ensure bold, italics, and code block formatting is preserved
         turndownService.addRule('italics', {
             filter: ['em', 'i'],
             replacement: function(content) {
@@ -84,7 +85,21 @@
             }
         });
 
-        function handleLineByLineRendering(event) {
+        // Convert previous line when user leaves it
+        function handleBlur(event) {
+            let currentNode = event.target;
+
+            if (!currentNode.classList.contains("line") || currentNode.classList.contains("rendered")) {
+                return;
+            }
+
+            let markdownText = turndownService.turndown(currentNode.innerHTML);
+            currentNode.innerHTML = marked.parse(markdownText);
+            currentNode.classList.add("rendered");
+        }
+
+        // Handle new lines on Enter
+        function handleEnter(event) {
             if (event.key === "Enter") {
                 event.preventDefault();
 
@@ -94,16 +109,16 @@
 
                 if (!currentNode.classList.contains("line")) return;
 
-                // Convert previous line to Markdown
-                let markdownText = turndownService.turndown(currentNode.innerHTML);
-                currentNode.innerHTML = marked.parse(markdownText);
-                currentNode.classList.add("rendered");
+                // Convert previous line before creating new one
+                handleBlur({ target: currentNode });
 
                 // Create new editable line
                 let newLine = document.createElement("div");
                 newLine.classList.add("line");
                 newLine.contentEditable = "true";
                 newLine.innerHTML = "<br>";
+
+                newLine.addEventListener("blur", handleBlur); // Ensure blur formatting works
 
                 editor.appendChild(newLine);
                 placeCursorAtEnd(newLine);
@@ -119,6 +134,7 @@
             selection.addRange(range);
         }
 
+        // Paste handler
         document.addEventListener("paste", function(event) {
             event.preventDefault();
             let clipboardData = event.clipboardData || window.clipboardData;
@@ -142,6 +158,7 @@
             selection.addRange(range);
         }
 
+        // Toggle Edit/Preview Mode
         toggleButton.addEventListener("click", function() {
             if (editor.contentEditable === "true") {
                 editor.contentEditable = "false";
@@ -153,13 +170,15 @@
             }
         });
 
+        // Initialize first editable line
         let firstLine = document.createElement("div");
         firstLine.classList.add("line");
         firstLine.contentEditable = "true";
+        firstLine.addEventListener("blur", handleBlur);
         editor.appendChild(firstLine);
         placeCursorAtEnd(firstLine);
 
-        editor.addEventListener("keydown", handleLineByLineRendering);
+        editor.addEventListener("keydown", handleEnter);
     </script>
 
 </body>
