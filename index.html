@@ -53,6 +53,59 @@
         .rendered {
             background-color: transparent;
         }
+        .add-button {
+            display: block;
+            width: 100%;
+            text-align: center;
+            background: #333;
+            color: white;
+            padding: 5px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-top: 5px;
+        }
+        .add-button:hover {
+            background: #555;
+        }
+
+        /* Fix Markdown Formatting */
+        strong, b {
+            font-weight: bold;
+            color: #ffffff;
+        }
+        em, i {
+            font-style: italic;
+            color: #bbbbbb;
+        }
+        pre, code {
+            background: #222;
+            padding: 4px 8px;
+            border-radius: 5px;
+            font-family: monospace;
+            color: #ffcc00;
+        }
+        pre {
+            display: block;
+            padding: 10px;
+            overflow-x: auto;
+        }
+        a {
+            color: #9b5cff;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .hashtag {
+            background-color: #222;
+            color: #9b5cff;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        ul {
+            padding-left: 20px;
+        }
     </style>
 </head>
 <body>
@@ -62,7 +115,7 @@
     <h1>Markdown Editor with Live Rendering</h1>
     <p>Type Markdown, move to a new line, and see real-time formatting.</p>
 
-    <div class="editor-container" id="editable" contenteditable="true"></div>
+    <div class="editor-container" id="editable"></div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/turndown/7.1.2/turndown.min.js"></script>
@@ -83,6 +136,17 @@
             currentNode.classList.add("rendered");
         }
 
+        function handleClickToEdit(event) {
+            let currentNode = event.target;
+            if (currentNode.classList.contains("rendered")) {
+                currentNode.classList.remove("rendered");
+                let markdownText = turndownService.turndown(currentNode.innerHTML);
+                currentNode.innerText = markdownText;
+                currentNode.contentEditable = "true";
+                currentNode.focus();
+            }
+        }
+
         function handleEnter(event) {
             if (event.key === "Enter") {
                 event.preventDefault();
@@ -93,20 +157,35 @@
 
                 if (!currentNode.classList.contains("line")) return;
 
-                // Fix for Mobile: Check if Enter is behaving as Shift+Enter
-                if (!event.shiftKey && currentNode.innerHTML !== "<br>") {
-                    handleBlur({ target: currentNode });
+                handleBlur({ target: currentNode });
 
-                    let newLine = document.createElement("div");
-                    newLine.classList.add("line");
-                    newLine.contentEditable = "true";
-                    newLine.innerHTML = "";
-
-                    newLine.addEventListener("blur", handleBlur);
-                    editor.appendChild(newLine);
-                    placeCursorAtEnd(newLine);
-                }
+                let newLine = createEditableDiv();
+                editor.appendChild(newLine);
+                placeCursorAtEnd(newLine);
             }
+        }
+
+        function createEditableDiv() {
+            let newLine = document.createElement("div");
+            newLine.classList.add("line");
+            newLine.contentEditable = "true";
+            newLine.innerHTML = "";
+            newLine.addEventListener("blur", handleBlur);
+            newLine.addEventListener("click", handleClickToEdit);
+            return newLine;
+        }
+
+        function addNewLineButton() {
+            let addButton = document.createElement("div");
+            addButton.classList.add("add-button");
+            addButton.innerText = "+ Add New Line";
+            addButton.addEventListener("click", function () {
+                let newLine = createEditableDiv();
+                editor.appendChild(newLine);
+                editor.appendChild(addNewLineButton());
+                placeCursorAtEnd(newLine);
+            });
+            return addButton;
         }
 
         function placeCursorAtEnd(element) {
@@ -126,20 +205,12 @@
             let plainText = clipboardData.getData("text/plain");
 
             let markdown = markdownData || (htmlData ? turndownService.turndown(htmlData) : plainText);
-            insertAtCursor(markdown);
+            let newLine = createEditableDiv();
+            newLine.innerText = markdown;
+            editor.appendChild(newLine);
+            editor.appendChild(addNewLineButton());
+            placeCursorAtEnd(newLine);
         });
-
-        function insertAtCursor(text) {
-            let selection = window.getSelection();
-            let range = selection.getRangeAt(0);
-            let textNode = document.createTextNode(text);
-            range.deleteContents();
-            range.insertNode(textNode);
-            range.setStartAfter(textNode);
-            range.setEndAfter(textNode);
-            selection.removeAllRanges();
-            selection.addRange(range);
-        }
 
         toggleButton.addEventListener("click", function() {
             if (editor.contentEditable === "true") {
@@ -152,11 +223,9 @@
             }
         });
 
-        let firstLine = document.createElement("div");
-        firstLine.classList.add("line");
-        firstLine.contentEditable = "true";
-        firstLine.addEventListener("blur", handleBlur);
+        let firstLine = createEditableDiv();
         editor.appendChild(firstLine);
+        editor.appendChild(addNewLineButton());
         placeCursorAtEnd(firstLine);
 
         editor.addEventListener("keydown", handleEnter);
