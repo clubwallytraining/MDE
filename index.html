@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Markdown Editor with Live Rendering</title>
+    <title>Markdown Editor - Obsidian + Colab Style</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -49,26 +49,31 @@
             min-height: 20px;
             cursor: text;
             outline: none;
+            border-bottom: 1px solid #333;
         }
         .rendered {
             background-color: transparent;
         }
         .add-button {
-            display: block;
-            width: 100%;
-            text-align: center;
-            background: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 30px;
+            height: 30px;
+            background: #444;
             color: white;
-            padding: 5px;
+            font-size: 20px;
             cursor: pointer;
-            border-radius: 5px;
-            margin-top: 5px;
+            border-radius: 50%;
+            margin: 10px auto;
+            text-align: center;
+            line-height: 30px;
         }
         .add-button:hover {
-            background: #555;
+            background: #666;
         }
 
-        /* Fix Markdown Formatting */
+        /* Markdown Formatting */
         strong, b {
             font-weight: bold;
             color: #ffffff;
@@ -112,8 +117,8 @@
 
     <button id="toggle-button">Switch to Preview</button>
 
-    <h1>Markdown Editor with Live Rendering</h1>
-    <p>Type Markdown, move to a new line, and see real-time formatting.</p>
+    <h1>Markdown Editor - Live Preview & Cell-Based Editing</h1>
+    <p>Type Markdown, move to a new line, and see real-time formatting. Use the `+` button to add new cells.</p>
 
     <div class="editor-container" id="editable"></div>
 
@@ -123,7 +128,6 @@
     <script>
         const editor = document.getElementById("editable");
         const toggleButton = document.getElementById("toggle-button");
-
         const turndownService = new TurndownService();
 
         function handleBlur(event) {
@@ -161,6 +165,7 @@
 
                 let newLine = createEditableDiv();
                 editor.appendChild(newLine);
+                editor.appendChild(createAddButton());
                 placeCursorAtEnd(newLine);
             }
         }
@@ -175,14 +180,14 @@
             return newLine;
         }
 
-        function addNewLineButton() {
+        function createAddButton() {
             let addButton = document.createElement("div");
             addButton.classList.add("add-button");
-            addButton.innerText = "+ Add New Line";
+            addButton.innerText = "+";
             addButton.addEventListener("click", function () {
                 let newLine = createEditableDiv();
                 editor.appendChild(newLine);
-                editor.appendChild(addNewLineButton());
+                editor.appendChild(createAddButton());
                 placeCursorAtEnd(newLine);
             });
             return addButton;
@@ -208,7 +213,7 @@
             let newLine = createEditableDiv();
             newLine.innerText = markdown;
             editor.appendChild(newLine);
-            editor.appendChild(addNewLineButton());
+            editor.appendChild(createAddButton());
             placeCursorAtEnd(newLine);
         });
 
@@ -225,7 +230,7 @@
 
         let firstLine = createEditableDiv();
         editor.appendChild(firstLine);
-        editor.appendChild(addNewLineButton());
+        editor.appendChild(createAddButton());
         placeCursorAtEnd(firstLine);
 
         editor.addEventListener("keydown", handleEnter);
