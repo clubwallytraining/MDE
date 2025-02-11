@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown Editor with Paste Support</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+            background-color: #121212;
+            color: #ffffff;
+        }
+        h1 {
+            text-align: center;
+        }
+        .editor-container {
+            display: flex;
+            width: 90%;
+            max-width: 1200px;
+            border: 1px solid #444;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        textarea {
+            width: 50%;
+            height: 400px;
+            padding: 10px;
+            background: #1e1e1e;
+            color: #ffffff;
+            border: none;
+            outline: none;
+            font-size: 16px;
+            resize: none;
+        }
+        .preview {
+            width: 50%;
+            height: 400px;
+            padding: 10px;
+            background: #2a2a2a;
+            overflow-y: auto;
+            border-left: 1px solid #444;
+        }
+        pre {
+            background: #333;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid #666;
+        }
+        table th, table td {
+            border: 1px solid #666;
+            padding: 5px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Markdown Editor with Paste Support</h1>
+    <p>Paste formatted content (from websites, Google Docs, etc.), and it will automatically be converted to Markdown.</p>
+
+    <div class="editor-container">
+        <textarea id="editor" placeholder="Type here..."></textarea>
+        <div class="preview" id="preview"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/turndown/7.1.2/turndown.min.js"></script>
+
+    <script>
+        const editor = document.getElementById("editor");
+        const preview = document.getElementById("preview");
+
+        const turndownService = new TurndownService();
+
+        // Custom rules for images, tables, and lists
+        turndownService.addRule('images', {
+            filter: 'img',
+            replacement: function(content, node) {
+                let src = node.getAttribute('src');
+                let alt = node.getAttribute('alt') || "Image";
+                return `![${alt}](${src})`;
+            }
+        });
+
+        turndownService.addRule('tables', {
+            filter: 'table',
+            replacement: function(content, node) {
+                let rows = Array.from(node.rows).map(row => {
+                    return '| ' + Array.from(row.cells).map(cell => cell.textContent.trim()).join(' | ') + ' |';
+                }).join('\n');
+
+                let headerSeparator = '| ' + '- | '.repeat(node.rows[0].cells.length);
+                return rows.split('\n')[0] + '\n' + headerSeparator + '\n' + rows.split('\n').slice(1).join('\n');
+            }
+        });
+
+        function updatePreview() {
+            preview.innerHTML = marked.parse(editor.value);
+        }
+
+        editor.addEventListener("input", updatePreview);
+
+        document.addEventListener("paste", function(event) {
+            event.preventDefault();
+            let clipboardData = event.clipboardData || window.clipboardData;
+            let htmlData = clipboardData.getData("text/html");
+            let plainText = clipboardData.getData("text/plain");
+
+            if (htmlData) {
+                let markdown = turndownService.turndown(htmlData);
+                insertAtCursor(markdown);
+            } else {
+                insertAtCursor(plainText);
+            }
+        });
+
+        function insertAtCursor(text) {
+            let startPos = editor.selectionStart;
+            let endPos = editor.selectionEnd;
+
+            let before = editor.value.substring(0, startPos);
+            let after = editor.value.substring(endPos);
+
+            editor.value = before + text + after;
+            editor.selectionStart = editor.selectionEnd = startPos + text.length;
+
+            updatePreview();
+        }
+
+        // Initialize preview
+        updatePreview();
+    </script>
+
+</body>
+</html>
