@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Markdown Editor with Obsidian-Style Live Rendering</title>
+    <title>Markdown Editor with Live Rendering</title>
     <style>
-        /* General Styling */
         body {
             font-family: Arial, sans-serif;
             background-color: #000000;
@@ -36,7 +35,6 @@
             background-color: #666;
         }
 
-        /* Editor */
         .editor-container {
             width: 90%;
             max-width: 800px;
@@ -50,48 +48,10 @@
             padding: 5px;
             min-height: 20px;
             cursor: text;
+            outline: none;
         }
         .rendered {
             background-color: transparent;
-        }
-
-        /* Markdown Styling */
-        strong, b {
-            color: #ffffff;
-            font-weight: bold;
-        }
-        em, i {
-            color: #bbbbbb;
-            font-style: italic;
-        }
-        pre, code {
-            background: #222;
-            padding: 4px 8px;
-            border-radius: 5px;
-            font-family: monospace;
-            color: #ffcc00;
-        }
-        pre {
-            display: block;
-            padding: 10px;
-            overflow-x: auto;
-        }
-        a {
-            color: #9b5cff;
-            text-decoration: none;
-        }
-        a:hover {
-            text-decoration: underline;
-        }
-        .hashtag {
-            background-color: #222;
-            color: #9b5cff;
-            padding: 2px 6px;
-            border-radius: 8px;
-            font-size: 14px;
-        }
-        ul {
-            padding-left: 20px;
         }
     </style>
 </head>
@@ -113,57 +73,16 @@
 
         const turndownService = new TurndownService();
 
-        // Fix for bold, italics, and inline code
-        turndownService.addRule('italics', {
-            filter: ['em', 'i'],
-            replacement: function(content) {
-                return `*${content}*`;
-            }
-        });
-
-        turndownService.addRule('bold', {
-            filter: ['strong', 'b'],
-            replacement: function(content) {
-                return `**${content}**`;
-            }
-        });
-
-        turndownService.addRule('inlineCode', {
-            filter: ['code'],
-            replacement: function(content) {
-                return `\`${content}\``;
-            }
-        });
-
-        turndownService.addRule('codeBlocks', {
-            filter: 'pre',
-            replacement: function(content, node) {
-                return `\`\`\`\n${node.textContent}\n\`\`\``;
-            }
-        });
-
-        // Hashtag Formatting
-        turndownService.addRule('hashtags', {
-            filter: node => node.classList.contains('hashtag'),
-            replacement: function(content) {
-                return `#${content}`;
-            }
-        });
-
-        // Convert previous line when user leaves it
         function handleBlur(event) {
             let currentNode = event.target;
-
             if (!currentNode.classList.contains("line") || currentNode.classList.contains("rendered")) {
                 return;
             }
-
             let markdownText = turndownService.turndown(currentNode.innerHTML);
             currentNode.innerHTML = marked.parse(markdownText);
             currentNode.classList.add("rendered");
         }
 
-        // Handle new lines on Enter
         function handleEnter(event) {
             if (event.key === "Enter") {
                 event.preventDefault();
@@ -174,19 +93,19 @@
 
                 if (!currentNode.classList.contains("line")) return;
 
-                // Convert previous line before creating new one
-                handleBlur({ target: currentNode });
+                // Fix for Mobile: Check if Enter is behaving as Shift+Enter
+                if (!event.shiftKey && currentNode.innerHTML !== "<br>") {
+                    handleBlur({ target: currentNode });
 
-                // Create new editable line
-                let newLine = document.createElement("div");
-                newLine.classList.add("line");
-                newLine.contentEditable = "true";
-                newLine.innerHTML = "<br>";
+                    let newLine = document.createElement("div");
+                    newLine.classList.add("line");
+                    newLine.contentEditable = "true";
+                    newLine.innerHTML = "";
 
-                newLine.addEventListener("blur", handleBlur); // Ensure blur formatting works
-
-                editor.appendChild(newLine);
-                placeCursorAtEnd(newLine);
+                    newLine.addEventListener("blur", handleBlur);
+                    editor.appendChild(newLine);
+                    placeCursorAtEnd(newLine);
+                }
             }
         }
 
@@ -199,7 +118,6 @@
             selection.addRange(range);
         }
 
-        // Paste handler
         document.addEventListener("paste", function(event) {
             event.preventDefault();
             let clipboardData = event.clipboardData || window.clipboardData;
@@ -223,7 +141,6 @@
             selection.addRange(range);
         }
 
-        // Toggle Edit/Preview Mode
         toggleButton.addEventListener("click", function() {
             if (editor.contentEditable === "true") {
                 editor.contentEditable = "false";
@@ -235,7 +152,6 @@
             }
         });
 
-        // Initialize first editable line
         let firstLine = document.createElement("div");
         firstLine.classList.add("line");
         firstLine.contentEditable = "true";
